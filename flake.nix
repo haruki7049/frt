@@ -14,6 +14,33 @@
         treefmtEval = treefmt-nix.lib.evalModule pkgs ./treefmt.nix;
       in
       {
+        packages.default = let
+          stdenv = pkgs.stdenv;
+          ruby = pkgs.ruby;
+          gems = pkgs.bundlerEnv {
+            name = "frt";
+            ruby = pkgs.ruby;
+            gemdir = ./.;
+          };
+        in stdenv.mkDerivation rec {
+          name = "frt";
+          src = ./.;
+          buildInputs = [ gems ruby ];
+
+          installPhase = ''
+            mkdir -p $out/{bin,share/beef}
+            cp -r * $out/share/beef
+            bin=$out/bin/beef
+
+            cat > $bin <<EOF
+            #!/bin/sh -e
+            exec ${gems}/bin/bundle exec ${ruby}/bin/ruby $out/share/beef/beef "\$@"
+            EOF
+
+            chmod +x $bin
+          '';
+        };
+
         formatter = treefmtEval.config.build.wrapper;
         checks.formatting = treefmtEval.config.build.check self;
 
